@@ -7,38 +7,56 @@
 import React, { Component } from "react";
 import { AppRegistry, StyleSheet, Text, View } from "react-native";
 
-async function getShopifyOrders() {
-  try {
-    let response = await fetch(
-      "https://shopicruit.myshopify.com/admin/orders.json?page=1&access_token=c32313df0d0ef512ca64d5b336a0d7c6"
-    );
-    let responseJson = await response.json();
-    return responseJson.orders;
-  } catch (error) {
-    console.error(error);
-  }
-}
-
 export default class CountMyMoney extends Component {
-  state = { totalRevenue: null, numberACKSold: null };
+  constructor() {
+    super();
+    this.state = { totalRevenue: null, numberACKSold: null, orders: [] };
+  }
 
-  checkACKSold(itemSold) {
-    if (itemSold.title === "Aerodynamic Cotton Keyboard") {
-      return itemSold;
+  async getShopifyOrders() {
+    try {
+      let response = await fetch(
+        "https://shopicruit.myshopify.com/admin/orders.json?page=1&access_token=c32313df0d0ef512ca64d5b336a0d7c6"
+      );
+      let responseJson = await response.json();
+      this.setState({ orders: responseJson.orders });
+      return responseJson.orders.length;
+    } catch (error) {
+      console.error("error is:" + error);
+      return -1;
     }
   }
 
   componentDidMount() {
-    const orders = getShopifyOrders();
+    this.getShopifyOrders().then(() => {
+      this.getTotalRevenue();
+      this.getNumberSold();
+    });
+  }
 
-    const totalRevenue = 0;
-    orders.map(order => totalRevenue += order.total_price_usd);
+  getTotalRevenue() {
+    const { orders } = this.state;
+    let totalRevenue = 0;
+    if (orders.length) {
+      orders.map(order => {
+        totalRevenue += parseFloat(order.total_price_usd);
+      });
+    }
+    this.setState({ totalRevenue: totalRevenue.toFixed(2) });
+  }
 
-    const numberACKSold = orderss.map(order =>
-      order.lineItems.some(checkACKSold)
-    ).length;
+  getNumberSold() {
+    const { orders } = this.state;
+    let count = 0;
 
-    this.setState(() => ({ totalRevenue, numberACKSold }));
+    for (let i = 0; i < orders.length; i += 1) {
+      for (let j = 0; j < orders[i].line_items.length; j += 1) {
+        if (orders[i].line_items[j].title === "Aerodynamic Cotton Keyboard") {
+          count += 1;
+        }
+      }
+    }
+    this.setState({ numberACKSold: count });
   }
 
   render() {
@@ -46,7 +64,7 @@ export default class CountMyMoney extends Component {
     return (
       <View style={styles.container}>
         <Text style={styles.welcome}>
-          Hello World!
+          Hey Shopify!
         </Text>
         <Text style={styles.data}>
           Total Revenue (in USD): ${totalRevenue}
@@ -67,15 +85,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5FCFF"
   },
   welcome: {
-    fontSize: 20,
+    fontSize: 36,
     textAlign: "center",
-    margin: 10
+    margin: 10,
+    paddingBottom: 104,
   },
   data: {
     fontSize: 16,
     textAlign: "left",
     paddingLeft: 20,
-    margin: 10,
+    margin: 10
   }
 });
 
